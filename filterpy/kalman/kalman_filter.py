@@ -450,7 +450,7 @@ class KalmanFilter(object):
     @x.setter
     def x(self, vec: np.array):
         if len(vec.shape) == 2:
-            if vec.shape[1] == 1:
+            if vec.shape == (self.dim_x, 1):
                 self.__x = np.atleast_2d(vec)
             else:
                 raise ValueError("Provided vector is not a column vector.")
@@ -490,11 +490,11 @@ class KalmanFilter(object):
     @B.setter
     def B(self, mat: np.array):
         if mat is not None:
-            if mat.shape == (self.dim_x, self.dim_x):
+            if mat.shape == (self.dim_u, self.dim_u):
                 self.__B = np.atleast_2d(mat)
             else:
                 raise ValueError(
-                    f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+                    f"Provided matrix must be of size {(self.dim_u, self.dim_u)}."
                 )
 
         else:
@@ -522,9 +522,7 @@ class KalmanFilter(object):
         if mat.shape[1] == self.dim_x:
             self.__H = np.atleast_2d(mat)
         else:
-            raise ValueError(
-                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
-            )
+            raise ValueError(f"Provided matrix must be of size  (*, {self.dim_x}).")
 
     @property
     def R(self):
@@ -536,7 +534,7 @@ class KalmanFilter(object):
             self.__R = np.atleast_2d(mat)
         else:
             raise ValueError(
-                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+                f"Provided matrix must be of size {(self.dim_z, self.dim_z)}."
             )
 
     @property
@@ -549,7 +547,7 @@ class KalmanFilter(object):
             self.__M = np.atleast_2d(mat)
         else:
             raise ValueError(
-                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+                f"Provided matrix must be of size {(self.dim_x, self.dim_z)}."
             )
 
     @property
@@ -559,7 +557,7 @@ class KalmanFilter(object):
     @z.setter
     def z(self, vec: np.array):
         if len(vec.shape) == 2:
-            if vec.shape[1] == 1:
+            if vec.shape == (self.dim_z, 1):
                 self.__z = np.atleast_2d(vec)
             else:
                 raise ValueError("Provided vector is not a column vector.")

@@ -17,21 +17,18 @@ This is licensed under an MIT license. See the readme.MD file
 for more information.
 """
 
-from __future__ import (absolute_import, division, unicode_literals)
+from __future__ import absolute_import, division, unicode_literals
 
 from copy import deepcopy
-from math import log, exp, sqrt
 import sys
 import numpy as np
-from numpy import dot, zeros, eye
-import scipy.linalg as linalg
 from filterpy.stats import logpdf
 from filterpy.common import pretty_str, reshape_z
 
 
 class ExtendedKalmanFilter(object):
 
-    """ Implements an extended Kalman filter (EKF). You are responsible for
+    """Implements an extended Kalman filter (EKF). You are responsible for
     setting the various state variables to reasonable values; the defaults
     will  not give you a functional filter.
 
@@ -105,12 +102,12 @@ class ExtendedKalmanFilter(object):
         Last measurement used in update(). Read only.
 
     log_likelihood : float
-        log-likelihood of the last measurement. Read only.
+        np.log-likelihood of the last measurement. Read only.
 
     likelihood : float
         likelihood of last measurment. Read only.
 
-        Computed from the log-likelihood. The log-likelihood can be very
+        Computed from the np.log-likelihood. The np.log-likelihood can be very
         small,  meaning a large negative value such as -28000. Taking the
         exp() of that results in 0.0, which can break typical algorithms
         which multiply by this value, so by default we always return a
@@ -135,29 +132,29 @@ class ExtendedKalmanFilter(object):
         self.dim_z = dim_z
         self.dim_u = dim_u
 
-        self.x = zeros((dim_x, 1)) # state
-        self.P = eye(dim_x)        # uncertainty covariance
-        self.B = 0                 # control transition matrix
-        self.F = np.eye(dim_x)     # state transition matrix
-        self.R = eye(dim_z)        # state uncertainty
-        self.Q = eye(dim_x)        # process uncertainty
-        self.y = zeros((dim_z, 1)) # residual
+        self.__x = np.zeros((dim_x, 1))  # state
+        self.__P = np.eye(dim_x)  # uncertainty covariance
+        self.__B = None  # control transition matrix
+        self.__F = np.eye(dim_x)  # state transition matrix
+        self.__R = np.eye(dim_z)  # state uncertainty
+        self.__Q = np.eye(dim_x)  # process uncertainty
+        self.__y = np.zeros((dim_z, 1))  # residual
 
-        z = np.array([None]*self.dim_z)
-        self.z = reshape_z(z, self.dim_z, self.x.ndim)
+        z = np.array([None] * self.dim_z)
+        self.__z = reshape_z(z, self.dim_z, self.x.ndim)
 
         # gain and residual are computed during the innovation step. We
         # save them so that in case you want to inspect them for various
         # purposes
-        self.K = np.zeros(self.x.shape) # kalman gain
-        self.y = zeros((dim_z, 1))
-        self.S = np.zeros((dim_z, dim_z))   # system uncertainty
+        self.K = np.zeros(self.x.shape)  # kalman gain
+        self.__y = np.zeros((dim_z, 1))
+        self.S = np.zeros((dim_z, dim_z))  # system uncertainty
         self.SI = np.zeros((dim_z, dim_z))  # inverse system uncertainty
 
         # identity matrix. Do not alter this.
         self._I = np.eye(dim_x)
 
-        self._log_likelihood = log(sys.float_info.min)
+        self._log_likelihood = np.log(sys.float_info.min)
         self._likelihood = sys.float_info.min
         self._mahalanobis = None
 
@@ -169,8 +166,130 @@ class ExtendedKalmanFilter(object):
         self.x_post = self.x.copy()
         self.P_post = self.P.copy()
 
+    @property
+    def x(self):
+        return self.__x
+
+    @x.setter
+    def x(self, vec: np.array):
+        if len(vec.shape) == 2:
+            if vec.shape[1] == 1:
+                self.__x = np.atleast_2d(vec)
+            else:
+                raise ValueError("Provided vector is not a column vector.")
+        else:
+            raise ValueError("Provided vector is not 2-dimensional.")
+
+    @property
+    def y(self):
+        return self.__y
+
+    @y.setter
+    def y(self, vec: np.array):
+        if len(vec.shape) == 2:
+            if vec.shape[1] == 1:
+                self.__y = np.atleast_2d(vec)
+            else:
+                raise ValueError("Provided vector is not a column vector.")
+        else:
+            raise ValueError("Provided vector is not 2-dimensional.")
+
+    @property
+    def P(self):
+        return self.__P
+
+    @P.setter
+    def P(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__P = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
+
+    @property
+    def Q(self):
+        return self.__Q
+
+    @Q.setter
+    def Q(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__Q = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
+
+    @property
+    def B(self):
+        return self.__B
+
+    @B.setter
+    def B(self, mat: np.array):
+        if mat is not None:
+            if mat.shape == (self.dim_u, self.dim_u):
+                self.__B = np.atleast_2d(mat)
+            else:
+                raise ValueError(
+                    f"Provided matrix must be of size {(self.dim_u, self.dim_u)}."
+                )
+
+        else:
+            self.__B = mat
+
+    @property
+    def F(self):
+        return self.__F
+
+    @F.setter
+    def F(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__F = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
+
+    # @property
+    # def H(self):
+    #     return self.__H
+
+    # @H.setter
+    # def H(self, mat: np.array):
+    #     if mat.shape[1] == self.dim_x:
+    #         self.__H = np.atleast_2d(mat)
+    #     else:
+    #         raise ValueError(f"Provided matrix must be of size (*, {self.dim_x}).")
+
+    @property
+    def R(self):
+        return self.__R
+
+    @R.setter
+    def R(self, mat: np.array):
+        if mat.shape == (self.dim_z, self.dim_z):
+            self.__R = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_z, self.dim_z)}."
+            )
+
+    @property
+    def z(self):
+        return self.__z
+
+    @z.setter
+    def z(self, vec: np.array):
+        if len(vec.shape) == 2:
+            if vec.shape[1] == 1:
+                self.__z = np.atleast_2d(vec)
+            else:
+                raise ValueError("Provided vector is not a column vector.")
+        else:
+            raise ValueError("Provided vector is not 2-dimensional.")
+
     def predict_update(self, z, HJacobian, Hx, args=(), hx_args=(), u=0):
-        """ Performs the predict/update innovation of the extended Kalman
+        """Performs the predict/update innovation of the extended Kalman
         filter.
 
         Parameters
@@ -201,7 +320,7 @@ class ExtendedKalmanFilter(object):
         u : np.array or scalar
             optional control vector input to the filter.
         """
-        #pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals
 
         if not isinstance(args, tuple):
             args = (args,)
@@ -222,24 +341,24 @@ class ExtendedKalmanFilter(object):
         H = HJacobian(x, *args)
 
         # predict step
-        x = dot(F, x) + dot(B, u)
-        P = dot(F, P).dot(F.T) + Q
+        x = F @ x + B @ u
+        P = F @ P @ F.T + Q
 
         # save prior
         self.x_prior = np.copy(self.x)
         self.P_prior = np.copy(self.P)
 
         # update step
-        PHT = dot(P, H.T)
-        self.S = dot(H, PHT) + R
-        self.SI = linalg.inv(self.S)
-        self.K = dot(PHT, self.SI)
+        PHT = P @ H.T
+        self.S = H @ PHT + R
+        self.SI = np.linalg.inv(self.S)
+        self.K = PHT @ self.SI
 
         self.y = z - Hx(x, *hx_args)
-        self.x = x + dot(self.K, self.y)
+        self.x = x + self.K @ self.y
 
-        I_KH = self._I - dot(self.K, H)
-        self.P = dot(I_KH, P).dot(I_KH.T) + dot(self.K, R).dot(self.K.T)
+        I_KH = self._I - self.K @ H
+        self.P = I_KH @ P @ I_KH.T + self.K @ R @ self.K.T
 
         # save measurement and posterior state
         self.z = deepcopy(z)
@@ -251,9 +370,10 @@ class ExtendedKalmanFilter(object):
         self._likelihood = None
         self._mahalanobis = None
 
-    def update(self, z, HJacobian, Hx, R=None, args=(), hx_args=(),
-               residual=np.subtract):
-        """ Performs the update innovation of the extended Kalman filter.
+    def update(
+        self, z, HJacobian, Hx, R=None, args=(), hx_args=(), residual=np.subtract
+    ):
+        """Performs the update innovation of the extended Kalman filter.
 
         Parameters
         ----------
@@ -295,7 +415,7 @@ class ExtendedKalmanFilter(object):
         """
 
         if z is None:
-            self.z = np.array([[None]*self.dim_z]).T
+            self.z = np.array([[None] * self.dim_z]).T
             self.x_post = self.x.copy()
             self.P_post = self.P.copy()
             return
@@ -309,27 +429,27 @@ class ExtendedKalmanFilter(object):
         if R is None:
             R = self.R
         elif np.isscalar(R):
-            R = eye(self.dim_z) * R
+            R = np.eye(self.dim_z) * R
 
         if np.isscalar(z) and self.dim_z == 1:
-            z = np.asarray([z], float)
+            z = np.at_least2d(np.asarray([z], float))
 
         H = HJacobian(self.x, *args)
 
-        PHT = dot(self.P, H.T)
-        self.S = dot(H, PHT) + R
-        self.SI = linalg.inv(self.S)
-        self.K = PHT.dot(self.SI)
+        PHT = self.P @ H.T
+        self.S = H @ PHT + R
+        self.SI = np.linalg.inv(self.S)
+        self.K = PHT @ self.SI
 
         hx = Hx(self.x, *hx_args)
-        self.y = residual(z, hx)
-        self.x = self.x + dot(self.K, self.y)
+        self.y = z - hx
+        self.x = self.x + self.K @ self.y
 
         # P = (I-KH)P(I-KH)' + KRK' is more numerically stable
         # and works for non-optimal K vs the equation
         # P = (I-KH)P usually seen in the literature.
-        I_KH = self._I - dot(self.K, H)
-        self.P = dot(I_KH, self.P).dot(I_KH.T) + dot(self.K, R).dot(self.K.T)
+        I_KH = self._I - self.K @ H
+        self.P = I_KH @ self.P @ I_KH.T + self.K @ R @ self.K.T
 
         # set to None to force recompute
         self._log_likelihood = None
@@ -341,16 +461,19 @@ class ExtendedKalmanFilter(object):
         self.x_post = self.x.copy()
         self.P_post = self.P.copy()
 
-    def predict_x(self, u=0):
+    def predict_x(self, u: np.ndarray = np.array([[0]])):
         """
         Predicts the next state of X. If you need to
         compute the next state yourself, override this function. You would
         need to do this, for example, if the usual Taylor expansion to
         generate F is not providing accurate results for you.
         """
-        self.x = dot(self.F, self.x) + dot(self.B, u)
+        if self.B is not None:
+            self.x = self.F @ self.x + self.B @ u
+        else:
+            self.x = self.F @ self.x
 
-    def predict(self, u=0):
+    def predict(self, u: np.ndarray = np.array([[0]])):
         """
         Predict next state (prior) using the Kalman filter state propagation
         equations.
@@ -364,7 +487,7 @@ class ExtendedKalmanFilter(object):
         """
 
         self.predict_x(u)
-        self.P = dot(self.F, self.P).dot(self.F.T) + self.Q
+        self.P = self.F @ self.P @ self.F.T + self.Q
 
         # save prior
         self.x_prior = np.copy(self.x)
@@ -373,7 +496,7 @@ class ExtendedKalmanFilter(object):
     @property
     def log_likelihood(self):
         """
-        log-likelihood of the last measurement.
+        np.log-likelihood of the last measurement.
         """
 
         if self._log_likelihood is None:
@@ -383,14 +506,14 @@ class ExtendedKalmanFilter(object):
     @property
     def likelihood(self):
         """
-        Computed from the log-likelihood. The log-likelihood can be very
+        Computed from the np.log-likelihood. The np.log-likelihood can be very
         small,  meaning a large negative value such as -28000. Taking the
-        exp() of that results in 0.0, which can break typical algorithms
+        np.exp() of that results in 0.0, which can break typical algorithms
         which multiply by this value, so by default we always return a
         number >= sys.float_info.min.
         """
         if self._likelihood is None:
-            self._likelihood = exp(self.log_likelihood)
+            self._likelihood = np.exp(self.log_likelihood)
             if self._likelihood == 0:
                 self._likelihood = sys.float_info.min
         return self._likelihood
@@ -406,23 +529,25 @@ class ExtendedKalmanFilter(object):
         mahalanobis : float
         """
         if self._mahalanobis is None:
-            self._mahalanobis = sqrt(float(dot(dot(self.y.T, self.SI), self.y)))
+            self._mahalanobis = np.sqrt(float(self.y.T @ self.SI @ self.y))
         return self._mahalanobis
 
     def __repr__(self):
-        return '\n'.join([
-            'KalmanFilter object',
-            pretty_str('x', self.x),
-            pretty_str('P', self.P),
-            pretty_str('x_prior', self.x_prior),
-            pretty_str('P_prior', self.P_prior),
-            pretty_str('F', self.F),
-            pretty_str('Q', self.Q),
-            pretty_str('R', self.R),
-            pretty_str('K', self.K),
-            pretty_str('y', self.y),
-            pretty_str('S', self.S),
-            pretty_str('likelihood', self.likelihood),
-            pretty_str('log-likelihood', self.log_likelihood),
-            pretty_str('mahalanobis', self.mahalanobis)
-            ])
+        return "\n".join(
+            [
+                "KalmanFilter object",
+                pretty_str("x", self.x),
+                pretty_str("P", self.P),
+                pretty_str("x_prior", self.x_prior),
+                pretty_str("P_prior", self.P_prior),
+                pretty_str("F", self.F),
+                pretty_str("Q", self.Q),
+                pretty_str("R", self.R),
+                pretty_str("K", self.K),
+                pretty_str("y", self.y),
+                pretty_str("S", self.S),
+                pretty_str("likelihood", self.likelihood),
+                pretty_str("np.log-likelihood", self.log_likelihood),
+                pretty_str("mahalanobis", self.mahalanobis),
+            ]
+        )
