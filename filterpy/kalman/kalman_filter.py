@@ -462,25 +462,41 @@ class KalmanFilter(object):
         return self.__P
 
     @P.setter
-    def P(self, mat):
-        self.__P = np.atleast_2d(mat)
+    def P(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__P = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def Q(self):
         return self.__Q
 
     @Q.setter
-    def Q(self, mat):
-        self.__Q = np.atleast_2d(mat)
+    def Q(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__Q = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def B(self):
         return self.__B
 
     @B.setter
-    def B(self, mat):
+    def B(self, mat: np.array):
         if mat is not None:
-            self.__B = np.atleast_2d(mat)
+            if mat.shape == (self.dim_x, self.dim_x):
+                self.__B = np.atleast_2d(mat)
+            else:
+                raise ValueError(
+                    f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+                )
+
         else:
             self.__B = mat
 
@@ -489,32 +505,52 @@ class KalmanFilter(object):
         return self.__F
 
     @F.setter
-    def F(self, mat):
-        self.__F = np.atleast_2d(mat)
+    def F(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__F = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def H(self):
         return self.__H
 
     @H.setter
-    def H(self, mat):
-        self.__H = np.atleast_2d(mat)
+    def H(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__H = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def R(self):
         return self.__R
 
     @R.setter
-    def R(self, mat):
-        self.__R = np.atleast_2d(mat)
+    def R(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__R = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def M(self):
         return self.__M
 
     @M.setter
-    def M(self, mat):
-        self.__M = np.atleast_2d(mat)
+    def M(self, mat: np.array):
+        if mat.shape == (self.dim_x, self.dim_x):
+            self.__M = np.atleast_2d(mat)
+        else:
+            raise ValueError(
+                f"Provided matrix must be of size {(self.dim_x, self.dim_x)}."
+            )
 
     @property
     def z(self):
