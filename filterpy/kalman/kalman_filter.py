@@ -1543,7 +1543,7 @@ def update(x, P, z, R, H=None, return_all=False):
     if return_all:
         # compute log likelihood
         log_likelihood = logpdf(z, H @ x, S)
-        return np.atleast_2d(x, P, y, K, S), log_likelihood
+        return *np.atleast_2d(x, P, y, K, S), log_likelihood
     return np.atleast_2d(x, P)
 
 
@@ -1796,7 +1796,7 @@ def batch_filter(
 
     """
 
-    n = np.size(zs, 0)
+    n = len(zs)
     dim_x = x.shape[0]
 
     # mean estimates from Kalman Filter

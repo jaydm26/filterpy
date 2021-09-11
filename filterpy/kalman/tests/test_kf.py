@@ -650,7 +650,7 @@ if __name__ == "__main__":
     test_z_dim()
     test_batch_filter()
     test_procedural_batch_filter()
-
+    test_procedure_form()
     test_univariate()
     test_noisy_1d()
     test_noisy_11d()
