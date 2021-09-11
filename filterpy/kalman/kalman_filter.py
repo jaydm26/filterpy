@@ -650,7 +650,7 @@ class KalmanFilter(object):
         self.P = I_KH @ self.P @ I_KH.T + self.K @ R @ self.K.T
 
         # save measurement and posterior state
-        self.z = deepcopy(z)
+        self.z = deepcopy(np.atleast_2d(z))
         self.x_post = self.x.copy()
         self.P_post = self.P.copy()
 
