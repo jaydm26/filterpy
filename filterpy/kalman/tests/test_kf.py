@@ -100,7 +100,7 @@ def test_noisy_1d():
     f.H = np.array([[1.0, 0.0]])  # Measurement function
     f.P *= 1000.0  # covariance matrix
     f.R = np.array([[5]])  # state uncertainty
-    f.Q = np.array([[0.0001]])  # process uncertainty
+    f.Q = np.eye(f.dim_x) * 0.0001  # process uncertainty
 
     measurements = []
     results = []
@@ -212,8 +212,8 @@ def test_noisy_11d():
 
     f.H = np.array([[1.0, 0.0]])  # Measurement function
     f.P *= 1000.0  # covariance matrix
-    f.R = np.array([[5]])  # state uncertainty
-    f.Q = np.array([[0.0001]])  # process uncertainty
+    f.R = np.eye(f.dim_z) * 5  # state uncertainty
+    f.Q = np.eye(f.dim_x) * 0.0001  # process uncertainty
 
     measurements = []
     results = []
@@ -268,8 +268,8 @@ def test_batch_filter():
 
     f.H = np.array([[1.0, 0.0]])  # Measurement function
     f.P *= 1000.0  # covariance matrix
-    f.R = 5  # state uncertainty
-    f.Q = 0.0001  # process uncertainty
+    f.R = np.eye(f.dim_z) * 5  # state uncertainty
+    f.Q = np.eye(f.dim_x) * 0.0001  # process uncertainty
 
     zs = [None, np.array([[1.0]]), np.array([[2.0]])]
     m, c, _, _ = f.batch_filter(zs, update_first=False)
@@ -654,3 +654,4 @@ if __name__ == "__main__":
     test_univariate()
     test_noisy_1d()
     test_noisy_11d()
+    test_update_correlated()

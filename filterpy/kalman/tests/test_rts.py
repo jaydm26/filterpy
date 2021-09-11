@@ -32,9 +32,9 @@ def test_rts():
     fk.F = np.array([[1.0, 1.0], [0.0, 1.0]])  # state transition matrix
 
     fk.H = np.array([[1.0, 0.0]])  # Measurement function
-    fk.P = np.array([[0.01]])  # covariance matrix
-    fk.R = np.array([[5]])  # state uncertainty
-    fk.Q = np.array([[0.001]])  # process uncertainty
+    fk.P = np.eye(fk.dim_x) * 0.01  # covariance matrix
+    fk.R = np.eye(fk.dim_z) * 5  # state uncertainty
+    fk.Q = np.eye(fk.dim_x) * 0.0001  # process uncertainty
 
     zs = [t + random.randn() * 4 for t in range(40)]
 
@@ -56,5 +56,5 @@ def test_rts():
 
 
 if __name__ == "__main__":
-    DO_PLOT = True
+    DO_PLOT = False
     test_rts()
