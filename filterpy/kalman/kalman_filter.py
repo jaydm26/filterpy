@@ -519,7 +519,7 @@ class KalmanFilter(object):
 
     @H.setter
     def H(self, mat: np.array):
-        if mat.shape == (self.dim_x, self.dim_x):
+        if mat.shape[1] == self.dim_x:
             self.__H = np.atleast_2d(mat)
         else:
             raise ValueError(
@@ -532,7 +532,7 @@ class KalmanFilter(object):
 
     @R.setter
     def R(self, mat: np.array):
-        if mat.shape == (self.dim_x, self.dim_x):
+        if mat.shape == (self.dim_z, 1):
             self.__R = np.atleast_2d(mat)
         else:
             raise ValueError(
