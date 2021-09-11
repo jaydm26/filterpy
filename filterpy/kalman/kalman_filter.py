@@ -1130,8 +1130,6 @@ class KalmanFilter(object):
         x, P, Pp = Xs.copy(), Ps.copy(), Ps.copy()
         for k in range(n - 2, -1, -1):
             Pp[k] = Fs[k + 1] @ P[k] @ Fs[k + 1].T + Qs[k + 1]
-
-            # pylint: disable=bad-whitespace
             K[k] = P[k] @ Fs[k + 1].T @ inv(Pp[k])
             x[k] += K[k] @ (x[k + 1] - Fs[k + 1] @ x[k])
             P[k] += K[k] @ (P[k + 1] - Pp[k]) @ K[k].T
