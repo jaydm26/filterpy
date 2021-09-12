@@ -533,7 +533,7 @@ class UnscentedKalmanFilter(object):
             self.P_post = self.P.copy()
             return
 
-        if all(np.atleast_2d(z) != z):
+        if (np.atleast_2d(z) != z).any() and z.shape[1] == 1:
             raise ValueError("Provide a column vector")
 
         if hx is None:
@@ -554,7 +554,7 @@ class UnscentedKalmanFilter(object):
         for i in range(self.sigmas_f.shape[1]):
             sigmas_h.append(hx(self.sigmas_f[:, i], **hx_args))
 
-        self.sigmas_h = np.atleast_3d(np.concatenate(sigmas_h).T)
+        self.sigmas_h = np.atleast_3d(np.concatenate(sigmas_h, axis=1))  # Risk Here
 
         # mean and covariance of prediction passed through unscented transform
         zp, self.S = UT(
@@ -688,7 +688,7 @@ class UnscentedKalmanFilter(object):
             raise TypeError("zs must be list-like")
 
         if self.dim_z == 1:
-            if not (np.isscalar(z) or (z.ndim == 1 and len(z) == 1)):
+            if not (np.isscalar(z) or (z.ndim == 2 and len(z) == 1)):
                 raise TypeError("zs must be a list of scalars or 1D, 1 element arrays")
         else:
             if len(z) != self.dim_z:
@@ -784,7 +784,7 @@ class UnscentedKalmanFilter(object):
         if len(Xs) != len(Ps):
             raise ValueError("Xs and Ps must have the same length")
 
-        n, dim_x = Xs.shape
+        n, dim_x, _ = Xs.shape
 
         if dts is None:
             dts = [self.dt] * n
@@ -803,13 +803,13 @@ class UnscentedKalmanFilter(object):
         num_sigmas = self._num_sigmas
 
         xs, ps = Xs.copy(), Ps.copy()
-        sigmas_f = np.zeros((num_sigmas, dim_x))
+        sigmas_f = np.zeros((dim_x, num_sigmas, 1))
 
         for k in reversed(range(n - 1)):
             # create sigma points from state estimate, pass through state func
             sigmas = self.points_fn.sigma_points(xs[k], ps[k])
             for i in range(num_sigmas):
-                sigmas_f[i] = self.fx(sigmas[i], dts[k])
+                sigmas_f[:, i] = self.fx(sigmas[:, i], dts[k])
 
             xb, Pb = UT(
                 sigmas_f, self.Wm, self.Wc, self.Q, self.x_mean, self.residual_x
@@ -818,9 +818,9 @@ class UnscentedKalmanFilter(object):
             # compute cross variance
             Pxb = 0
             for i in range(num_sigmas):
-                y = self.residual_x(sigmas_f[i], xb)
-                z = self.residual_x(sigmas[i], Xs[k])
-                Pxb += self.Wc[i] * np.outer(z, y)
+                y = self.residual_x(sigmas_f[:, i], xb)
+                z = self.residual_x(sigmas[:, i], Xs[k])
+                Pxb += self.Wc[i] * z @ y.T
 
             # compute gain
             K = Pxb @ self.inv(Pb)

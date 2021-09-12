@@ -158,6 +158,9 @@ class MerweScaledSigmaPoints(object):
         if np.isscalar(x):
             x = np.asarray([x])
 
+        if (np.atleast_2d(x) != x).any() and x.shape[1] == 1:
+            raise ValueError("Provide a column vector")
+
         if np.isscalar(P):
             P = np.eye(n) * P
         else:
@@ -169,7 +172,6 @@ class MerweScaledSigmaPoints(object):
         sigmas = np.zeros((n, 2 * n + 1, 1))
         sigmas[:, 0] = x
         for k in range(n):
-            # pylint: disable=bad-whitespace
             sigmas[:, k + 1] = x + np.atleast_2d(U[k]).T  # x - (-U[k])
             sigmas[:, n + k + 1] = x - np.atleast_2d(U[k]).T  # x - U[k]
 
@@ -331,6 +333,9 @@ class JulierSigmaPoints(object):
         if np.isscalar(x):
             x = np.asarray([x])
 
+        if (np.atleast_2d(x) != x).any() and x.shape[1] == 1:
+            raise ValueError("Provide a column vector")
+
         n = np.size(x)  # dimension of problem
 
         if np.isscalar(P):
@@ -338,17 +343,16 @@ class JulierSigmaPoints(object):
         else:
             P = np.atleast_2d(P)
 
-        sigmas = np.zeros((2 * n + 1, n))
+        sigmas = np.zeros((n, 2 * n + 1, 1))
 
         # implements U'*U = (n+kappa)*P. Returns lower triangular matrix.
         # Take transpose so we can access with U[i]
         U = self.sqrt((n + self.kappa) * P)
 
-        sigmas[0] = x
+        sigmas[:, 0] = x
         for k in range(n):
-            # pylint: disable=bad-whitespace
-            sigmas[k + 1] = self.subtract(x, -U[k])
-            sigmas[n + k + 1] = self.subtract(x, U[k])
+            sigmas[:, k + 1] = x + np.atleast_2d(U[k]).T  # x - (-U[k])
+            sigmas[:, n + k + 1] = x - np.atleast_2d(U[k]).T  # x - U[k]
         return sigmas
 
     def _compute_weights(self):
@@ -482,7 +486,11 @@ class SimplexSigmaPoints(object):
         n = self.n
 
         if np.isscalar(x):
-            x = np.asarray([x])
+            x = np.asarray([[x]])
+
+        if (np.atleast_2d(x) != x).any() and x.shape[1] == 1:
+            raise ValueError("Provide a column vector")
+
         x = x.reshape(-1, 1)
 
         if np.isscalar(P):
@@ -508,7 +516,7 @@ class SimplexSigmaPoints(object):
         scaled_unitary = (U.T).dot(I)
 
         sigmas = self.subtract(x, -scaled_unitary)
-        return sigmas.T
+        return np.atleast_3d(sigmas)
 
     def _compute_weights(self):
         """Computes the weights for the scaled unscented Kalman filter."""

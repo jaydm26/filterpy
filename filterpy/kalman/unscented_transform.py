@@ -100,7 +100,7 @@ def unscented_transform(sigmas, Wm, Wc, noise_cov=None, mean_fn=None, residual_f
     try:
         if mean_fn is None:
             # new mean is just the sum of the sigmas * weight
-            x = np.atleast_2d(sigmas.squeeze() @ Wm.T)  # dot = \Sigma^n_1 (W[k]*Xi[k])
+            x = np.atleast_2d(sigmas[:, :, 0] @ Wm.T)  # dot = \Sigma^n_1 (W[k]*Xi[k])
         else:
             x = mean_fn(sigmas, Wm)
     except:
@@ -112,7 +112,7 @@ def unscented_transform(sigmas, Wm, Wc, noise_cov=None, mean_fn=None, residual_f
 
     # this is the fast way to do this - see 'else' for the slow way
     if residual_fn is np.subtract or residual_fn is None:
-        y = sigmas.squeeze().T - x
+        y = sigmas[:, :, 0].T - x
         P = y.T @ np.atleast_2d(np.diag(Wc)) @ y
     else:
         P = np.zeros((n, n))

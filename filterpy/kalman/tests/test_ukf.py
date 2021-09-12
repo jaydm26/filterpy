@@ -45,7 +45,7 @@ def test_sigma_plot():
     """Test to make sure sigma's correctly mirror the shape and orientation
     of the covariance array."""
 
-    x = np.array([[1, 2]])
+    x = np.array([[1, 2]]).T
     P = np.array([[2, 1.2], [1.2, 2]])
     kappa = 0.1
 
@@ -72,8 +72,8 @@ def test_sigma_plot():
     Xi2 = sp2.sigma_points(x, P)
     Xi3 = sp3.sigma_points(x, P)
 
-    assert max(Xi1[:, 0]) > max(Xi0[:, 0])
-    assert max(Xi1[:, 1]) > max(Xi0[:, 1])
+    assert max(Xi1[0, :]) > max(Xi0[0, :])
+    assert max(Xi1[1, :]) > max(Xi0[1, :])
 
     if DO_PLOT:
         plt.figure()
@@ -136,14 +136,14 @@ def test_julier_sigma_points_1D():
 
     # sum of weights*sigma points should be the original mean
     m = 0.0
-    for x, w in zip(Xi, Wm):
+    for x, w in zip(Xi.squeeze(), Wm):
         m += x * w
 
     assert abs(m - mean) < 1.0e-12
     assert abs(xm[0] - mean) < 1.0e-12
     assert abs(ucov[0, 0] - cov) < 1.0e-12
 
-    assert Xi.shape == (3, 1)
+    assert Xi[:, :, 0].shape == (1, 3)
 
 
 def test_simplex_sigma_points_1D():
@@ -163,14 +163,14 @@ def test_simplex_sigma_points_1D():
 
     # sum of weights*sigma points should be the original mean
     m = 0.0
-    for x, w in zip(Xi, Wm):
+    for x, w in zip(Xi.squeeze(), Wm):
         m += x * w
 
     assert abs(m - mean) < 1.0e-12
     assert abs(xm[0] - mean) < 1.0e-12
     assert abs(ucov[0, 0] - cov) < 1.0e-12
 
-    assert Xi.shape == (2, 1)
+    assert Xi[:, :, 0].shape == (1, 2)
 
 
 def test_simplex_sigma_points_2D():
@@ -182,7 +182,7 @@ def test_simplex_sigma_points_2D():
     assert np.allclose(Wm, Wc, 1e-12)
     assert len(Wm) == 5
 
-    mean = np.array([-1, 2, 0, 5])
+    mean = np.array([[-1, 2, 0, 5]]).T
 
     cov1 = np.array([[1, 0.5], [0.5, 1]])
 
@@ -215,7 +215,7 @@ class RadarSim(object):
 def test_radar():
     def fx(x, dt):
         A = np.eye(3) + dt * np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-        return A.dot(x)
+        return A @ x
 
     def hx(x):
         return [np.sqrt(x[0] ** 2 + x[2] ** 2)]
@@ -231,23 +231,23 @@ def test_radar():
     str(kf)
 
     kf.Q *= 0.01
-    kf.R = 10
-    kf.x = np.array([0.0, 90.0, 1100.0])
+    kf.R = np.array([[10]])
+    kf.x = np.array([[0.0, 90.0, 1100.0]]).T
     kf.P *= 100.0
     radar = RadarSim(dt)
 
     t = np.arange(0, 20 + dt, dt)
     n = len(t)
-    xs = np.zeros((n, 3))
+    xs = np.zeros((3, n, 1))
 
     np.random.seed(200)
     rs = []
     for i in range(len(t)):
-        r = radar.get_range()
+        r = np.array([[radar.get_range()]])
         kf.predict()
-        kf.update(z=[r])
+        kf.update(z=r)
 
-        xs[i, :] = kf.x
+        xs[:, i, :] = kf.x
         rs.append(r)
 
         # test mahalanobis
@@ -284,13 +284,16 @@ def test_linear_2d_merwe():
     points = MerweScaledSigmaPoints(4, 0.1, 2.0, -1)
     kf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=fx, hx=hx, points=points)
 
-    kf.x = np.array([-1.0, 1, -1, 1])
+    kf.x = np.array([[-1.0, 1, -1, 1]]).T
     kf.P *= 1.1
 
     # test __repr__ doesn't crash
     str(kf)
 
-    zs = [[i + np.random.randn() * 0.1, i + np.random.randn() * 0.1] for i in range(20)]
+    zs = [
+        np.array([[i + np.random.randn() * 0.1, i + np.random.randn() * 0.1]]).T
+        for i in range(20)
+    ]
 
     Ms, Ps = kf.batch_filter(zs)
     smooth_x, _, _ = kf.rts_smoother(Ms, Ps, dts=dt)
@@ -321,13 +324,13 @@ def test_linear_2d_simplex():
     points = SimplexSigmaPoints(n=4)
     kf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=fx, hx=hx, points=points)
 
-    kf.x = np.array([-1.0, 1.0, -1.0, 1])
+    kf.x = np.array([[-1.0, 1.0, -1.0, 1]]).T
     kf.P *= 0.0001
 
     mss = MerweScaledSigmaPoints(4, 0.1, 2.0, -1)
     ukf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=fx, hx=hx, points=mss)
 
-    ukf.x = np.array([-1.0, 1.0, -1.0, 1])
+    ukf.x = np.array([[-1.0, 1.0, -1.0, 1]]).T
     ukf.P *= 1
 
     x = kf.x
@@ -386,7 +389,7 @@ def test_ukf_ekf_comparison():
         ekf.predict()
         assert np.allclose(ekf.P, ukf.P), "ekf and ukf differ after prediction"
 
-        ukf.update(z)
+        ukf.update(np.array([z]))
         ekf.update(np.array([z]), lambda x: np.array([[1]]), hx)
         assert np.allclose(ekf.P, ukf.P), "ekf and ukf differ after update"
 
@@ -397,7 +400,7 @@ def test_linear_1d():
     def fx(x, dt):
         F = np.array([[1.0, dt], [0, 1]])
 
-        return np.dot(F, x)
+        return F @ x
 
     def hx(x):
         return np.array([x[0]])
@@ -406,18 +409,18 @@ def test_linear_1d():
     points = MerweScaledSigmaPoints(2, 0.1, 2.0, -1)
     kf = UnscentedKalmanFilter(dim_x=2, dim_z=1, dt=dt, fx=fx, hx=hx, points=points)
 
-    kf.x = np.array([1, 2])
+    kf.x = np.array([[1, 2]]).T
     kf.P = np.array([[1, 1.1], [1.1, 3]])
     kf.R *= 0.05
     kf.Q = np.array([[0.0, 0], [0.0, 0.001]])
 
-    z = np.array([2.0])
+    z = np.array([[2.0]])
     kf.predict()
     kf.update(z)
 
     zs = []
     for i in range(50):
-        z = np.array([i + np.random.randn() * 0.1])
+        z = np.array([[i + np.random.randn() * 0.1]])
         zs.append(z)
 
         kf.predict()
@@ -434,7 +437,7 @@ def test_batch_misnp_sing_data():
             [[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]], dtype=float
         )
 
-        return np.dot(F, x)
+        return F @ x
 
     def hx(x):
         return np.array([x[0], x[2]])
@@ -443,12 +446,12 @@ def test_batch_misnp_sing_data():
     points = MerweScaledSigmaPoints(4, 0.1, 2.0, -1)
     kf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=fx, hx=hx, points=points)
 
-    kf.x = np.array([-1.0, 1.0, -1.0, 1])
+    kf.x = np.array([[-1.0, 1.0, -1.0, 1]]).T
     kf.P *= 0.0001
 
     zs = []
     for i in range(20):
-        z = np.array([i + np.random.randn() * 0.1, i + np.random.randn() * 0.1])
+        z = np.array([[i + np.random.randn() * 0.1, i + np.random.randn() * 0.1]]).T
         zs.append(z)
 
     zs[2] = None
@@ -460,8 +463,7 @@ def test_batch_misnp_sing_data():
 def test_rts():
     def fx(x, dt):
         A = np.eye(3) + dt * np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-        f = np.dot(A, x)
-        return f
+        return A @ x
 
     def hx(x):
         return [np.sqrt(x[0] ** 2 + x[2] ** 2)]
@@ -472,8 +474,8 @@ def test_rts():
     kf = UnscentedKalmanFilter(3, 1, dt, fx=fx, hx=hx, points=sp)
 
     kf.Q *= 0.01
-    kf.R = 10
-    kf.x = np.array([0.0, 90.0, 1100.0])
+    kf.R = np.array([[10]])
+    kf.x = np.array([[0.0, 90.0, 1100.0]]).T
     kf.P *= 100.0
     radar = RadarSim(dt)
 
@@ -481,22 +483,24 @@ def test_rts():
 
     n = len(t)
 
-    xs = np.zeros((n, 3))
+    xs = np.zeros((3, n, 1))
 
     np.random.seed(200)
     rs = []
     for i in range(len(t)):
-        r = radar.get_range()
+        r = np.array([[radar.get_range()]])
         kf.predict()
-        kf.update(z=[r])
+        kf.update(z=r)
 
-        xs[i, :] = kf.x
+        xs[:, i, :] = kf.x
         rs.append(r)
 
-    kf.x = np.array([0.0, 90.0, 1100.0])
+    kf.x = np.array([[0.0, 90.0, 1100.0]]).T
     kf.P = np.eye(3) * 100
     M, P = kf.batch_filter(rs)
-    assert np.array_equal(M, xs), "Batch filter generated different output"
+    assert np.array_equal(
+        M, np.swapaxes(xs, 0, 1)
+    ), "Batch filter generated different output"
 
     Qs = [kf.Q] * len(t)
     M2, P2, K = kf.rts_smoother(Xs=M, Ps=P, Qs=Qs)
@@ -518,8 +522,7 @@ def test_rts():
 def test_fixed_lag():
     def fx(x, dt):
         A = np.eye(3) + dt * np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-        f = np.dot(A, x)
-        return f
+        return A @ x
 
     def hx(x):
         return [np.sqrt(x[0] ** 2 + x[2] ** 2)]
@@ -531,14 +534,14 @@ def test_fixed_lag():
     kf = UnscentedKalmanFilter(3, 1, dt, fx=fx, hx=hx, points=sp)
 
     kf.Q *= 0.01
-    kf.R = 10
-    kf.x = np.array([0.0, 90.0, 1100.0])
+    kf.R = np.array([[10]])
+    kf.x = np.array([[0.0, 90.0, 1100.0]]).T
     kf.P *= 1.0
     radar = RadarSim(dt)
 
     t = np.arange(0, 20 + dt, dt)
     n = len(t)
-    xs = np.zeros((n, 3))
+    xs = np.zeros((3, n, 1))
 
     np.random.seed(200)
     rs = []
@@ -548,11 +551,11 @@ def test_fixed_lag():
     N = 10
     flxs = []
     for i in range(len(t)):
-        r = radar.get_range()
+        r = np.array([[radar.get_range()]])
         kf.predict()
-        kf.update(z=[r])
+        kf.update(z=r)
 
-        xs[i, :] = kf.x
+        xs[:, i, :] = kf.x
         flxs.append(kf.x)
         rs.append(r)
         M.append(kf.x)
@@ -567,7 +570,7 @@ def test_fixed_lag():
             except:
                 print("except", i)
 
-    kf.x = np.array([0.0, 90.0, 1100.0])
+    kf.x = np.array([[0.0, 90.0, 1100.0]]).T
     kf.P = np.eye(3) * 100
     M, P = kf.batch_filter(rs)
 
@@ -603,13 +606,13 @@ def test_circle():
         return np.array([x, y])
 
     def fx(x, dt):
-        return np.array([x[0], x[1] + x[2], x[2]])
+        return np.array([[x[0], x[1] + x[2], x[2]]]).T
 
     std_noise = 0.1
 
     sp = JulierSigmaPoints(n=3, kappa=0.0)
     f = UnscentedKalmanFilter(dim_x=3, dim_z=2, dt=0.01, hx=hx, fx=fx, points=sp)
-    f.x = np.array([50.0, 90.0, 0])
+    f.x = np.array([[50.0, 90.0, 0]]).T
     f.P *= 100
     f.R = np.eye(2) * (std_noise ** 2)
     f.Q = np.eye(3) * 0.001
@@ -647,7 +650,7 @@ def test_circle():
         x = np.cos(np.radians(a)) * 50.0 + np.random.randn() * std_noise
         y = np.sin(np.radians(a)) * 50.0 + np.random.randn() * std_noise
         # create measurement = t plus white noise
-        z = np.array([x, y])
+        z = np.array([[x, y]]).T
         zs.append(z)
 
         f.predict()
@@ -881,10 +884,10 @@ def test_linear_rts():
 
     def t_func(x, dt):
         F = np.array([[1.0, dt], [0.0, 1]])
-        return np.dot(F, x)
+        return F @ x
 
     def o_func(x):
-        return np.dot(H, x)
+        return H @ x
 
     sig_t = 0.1  # peocess
     sig_o = 0.0001  # measurement
@@ -896,8 +899,8 @@ def test_linear_rts():
         X_true.append([i + 1, 1.0])
         X_obs.append(i + 1 + np.random.normal(scale=sig_o))
 
-    X_true = np.array(X_true)
-    X_obs = np.array(X_obs)
+    X_true = [np.array([[x]]) for x in X_true]
+    X_obs = [np.array([[x]]) for x in X_obs]
 
     oc = np.ones((1, 1)) * sig_o ** 2
     tc = np.zeros((2, 2))
@@ -909,7 +912,7 @@ def test_linear_rts():
     ukf = UnscentedKalmanFilter(
         dim_x=2, dim_z=1, dt=dt, hx=o_func, fx=t_func, points=points
     )
-    ukf.x = np.array([0.0, 1.0])
+    ukf.x = np.array([[0.0, 1.0]]).T
     ukf.R = np.copy(oc)
     ukf.Q = np.copy(tc)
     s = Saver(ukf)
@@ -930,9 +933,9 @@ def test_linear_rts():
     x_kf, _, _, _ = kf.rts_smoother(mu_kf, cov_kf)
 
     # check results of filtering are correct
-    kfx = mu_kf[:, 0, 0]
+    kfx = mu_kf[:, 0]
     ukfx = mu_ukf[:, 0]
-    kfxx = mu_kf[:, 1, 0]
+    kfxx = mu_kf[:, 1]
     ukfxx = mu_ukf[:, 1]
 
     dx = kfx - ukfx
@@ -944,9 +947,9 @@ def test_linear_rts():
     assert np.allclose(dxx, 0, atol=1e-6)
 
     # now ensure the RTS smoothers gave nearly identical results
-    kfx = x_kf[:, 0, 0]
+    kfx = x_kf[:, 0]
     ukfx = x_ukf[:, 0]
-    kfxx = x_kf[:, 1, 0]
+    kfxx = x_kf[:, 1]
     ukfxx = x_ukf[:, 1]
 
     dx = kfx - ukfx
@@ -1012,7 +1015,7 @@ def test_vhartman():
         # state transition function - predict next state based
         # on constant velocity model x = vt + x_0
         F = np.array([[1.0]], dtype=np.float32)
-        return np.dot(F, x)
+        return F @ x
 
     def hx(x):
         # measurement function - convert state into a measurement
@@ -1024,7 +1027,7 @@ def test_vhartman():
     points = MerweScaledSigmaPoints(1, alpha=1, beta=2.0, kappa=0.1)
 
     kf = UnscentedKalmanFilter(dim_x=1, dim_z=1, dt=dt, fx=fx, hx=hx, points=points)
-    kf.x = np.array([0.0])  # initial state
+    kf.x = np.array([[0.0]])  # initial state
     kf.P = np.array([[1]])  # initial uncertainty
     kf.R = np.array([[1]])  # 1 standard
     kf.Q = np.array([[1]])  # 1 standard
@@ -1038,15 +1041,15 @@ def test_vhartman():
     ekf.Q = np.array([[1]])  # 1 standard
 
     np.random.seed(0)
-    zs = [[np.random.randn()] for i in range(50)]  # measurements
+    zs = [np.array([[np.random.randn()]]) for i in range(50)]  # measurements
     for z in zs:
         kf.predict()
         ekf.predict()
         assert np.allclose(ekf.P, kf.P)
         assert np.allclose(ekf.x, kf.x)
 
-        kf.update(np.array([[z]]))
-        ekf.update(np.array([z]), lambda x: np.array([[1]]), hx)
+        kf.update(z)
+        ekf.update(z, lambda x: np.array([[1]]), hx)
         assert np.allclose(ekf.P, kf.P)
         assert np.allclose(ekf.x, kf.x)
 

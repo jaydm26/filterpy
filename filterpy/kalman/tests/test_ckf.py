@@ -19,10 +19,10 @@ def test_1d():
     def fx(x, dt):
         F = np.array([[1.0, dt], [0, 1]])
 
-        return np.dot(F, x)
+        return F @ x
 
     def hx(x):
-        return x[0:1]
+        return np.atleast_2d(x[0:1])
 
     ckf = CKF(dim_x=2, dim_z=1, dt=0.1, hx=hx, fx=fx)
 
@@ -36,7 +36,7 @@ def test_1d():
     points = MerweScaledSigmaPoints(2, 0.1, 2.0, -1)
     kf = UKF(dim_x=2, dim_z=1, dt=dt, fx=fx, hx=hx, points=points)
 
-    kf.x = np.array([1, 2])
+    kf.x = np.array([[1, 2]]).T
     kf.P = np.array([[1, 1.1], [1.1, 3]])
     kf.R *= 0.05
     kf.Q = np.array([[0.0, 0], [0.0, 0.001]])
@@ -47,7 +47,7 @@ def test_1d():
         ckf.predict()
         ckf.update(z)
         kf.predict()
-        kf.update(z[0])
+        kf.update(z)
         assert abs(ckf.x[0] - kf.x[0]) < 1e-10
         assert abs(ckf.x[1] - kf.x[1]) < 1e-10
         s.save()
