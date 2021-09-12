@@ -348,8 +348,8 @@ class UnscentedKalmanFilter(object):
         # sigma points transformed through f(x) and h(x)
         # variables for efficiency so we don't recreate every update
 
-        self.sigmas_f = np.zeros((self._num_sigmas, self._dim_x))
-        self.sigmas_h = np.zeros((self._num_sigmas, self._dim_z))
+        self.sigmas_f = np.zeros((self.dim_x, self._num_sigmas, 1))
+        self.sigmas_h = np.zeros((self.dim_z, self._num_sigmas, 1))
 
         self.K = np.zeros((dim_x, dim_z))  # Kalman gain
         self.__y = np.zeros((dim_z))  # residual
@@ -448,7 +448,6 @@ class UnscentedKalmanFilter(object):
                 f"Provided matrix must be of size {(self.dim_z, self.dim_z)}."
             )
 
-
     def predict(self, dt=None, UT=None, fx=None, **fx_args):
         r"""
         Performs the predict step of the UKF. On return, self.x and
@@ -462,7 +461,7 @@ class UnscentedKalmanFilter(object):
 
         dt : double, optional
             If specified, the time step to be used for this prediction.
-            self._dt is used if this is not provided.
+            self.dt is used if this is not provided.
 
         fx : callable f(x, dt, **fx_args), optional
             State transition function. If not provided, the default
@@ -479,7 +478,7 @@ class UnscentedKalmanFilter(object):
         """
 
         if dt is None:
-            dt = self._dt
+            dt = self.dt
 
         if UT is None:
             UT = unscented_transform
@@ -529,10 +528,13 @@ class UnscentedKalmanFilter(object):
         """
 
         if z is None:
-            self.z = np.array([[None] * self._dim_z]).T
+            self.z = np.array([[None] * self.dim_z]).T
             self.x_post = self.x.copy()
             self.P_post = self.P.copy()
             return
+
+        if all(np.atleast_2d(z) != z):
+            raise ValueError("Provide a column vector")
 
         if hx is None:
             hx = self.hx
@@ -543,16 +545,16 @@ class UnscentedKalmanFilter(object):
         if R is None:
             R = self.R
         elif np.isscalar(R):
-            R = np.eye(self._dim_z) * R
+            R = np.eye(self.dim_z) * R
 
         # pass prior sigmas through h(x) to get measurement sigmas
         # the shape of sigmas_h will vary if the shape of z varies, so
         # recreate each time
         sigmas_h = []
-        for s in self.sigmas_f:
-            sigmas_h.append(hx(s, **hx_args))
+        for i in range(self.sigmas_f.shape[1]):
+            sigmas_h.append(hx(self.sigmas_f[:, i], **hx_args))
 
-        self.sigmas_h = np.atleast_2d(sigmas_h)
+        self.sigmas_h = np.atleast_3d(np.concatenate(sigmas_h).T)
 
         # mean and covariance of prediction passed through unscented transform
         zp, self.S = UT(
@@ -585,12 +587,12 @@ class UnscentedKalmanFilter(object):
         Compute cross variance of the state `x` and measurement `z`.
         """
 
-        Pxz = np.zeros((sigmas_f.shape[1], sigmas_h.shape[1]))
-        N = sigmas_f.shape[0]
+        Pxz = np.zeros((sigmas_f.shape[0], sigmas_h.shape[0]))
+        N = sigmas_f.shape[1]
         for i in range(N):
-            dx = self.residual_x(sigmas_f[i], x)
-            dz = self.residual_z(sigmas_h[i], z)
-            Pxz += self.Wc[i] * np.outer(dx, dz)
+            dx = self.residual_x(sigmas_f[:, i], x)
+            dz = self.residual_z(sigmas_h[:, i], z)
+            Pxz += self.Wc[i] * dx @ dz.T
         return Pxz
 
     def compute_process_sigmas(self, dt, fx=None, **fx_args):
@@ -608,8 +610,8 @@ class UnscentedKalmanFilter(object):
         # calculate sigma points for given mean and covariance
         sigmas = self.points_fn.sigma_points(self.x, self.P)
 
-        for i, s in enumerate(sigmas):
-            self.sigmas_f[i] = fx(s, dt, **fx_args)
+        for i, j in enumerate(range(sigmas.shape[1])):
+            self.sigmas_f[:, i] = fx(sigmas[:, j], dt, **fx_args)
 
     def batch_filter(self, zs, Rs=None, dts=None, UT=None, saver=None):
         """
@@ -619,7 +621,7 @@ class UnscentedKalmanFilter(object):
         ----------
 
         zs : list-like
-            list of measurements at each time step `self._dt` Missing
+            list of measurements at each time step `self.dt` Missing
             measurements must be represented by 'None'.
 
         Rs : None, np.array or list-like, default=None
@@ -685,14 +687,14 @@ class UnscentedKalmanFilter(object):
         except TypeError:
             raise TypeError("zs must be list-like")
 
-        if self._dim_z == 1:
+        if self.dim_z == 1:
             if not (np.isscalar(z) or (z.ndim == 1 and len(z) == 1)):
                 raise TypeError("zs must be a list of scalars or 1D, 1 element arrays")
         else:
-            if len(z) != self._dim_z:
+            if len(z) != self.dim_z:
                 raise TypeError(
                     "each element in zs must be a 1D array of length {}".format(
-                        self._dim_z
+                        self.dim_z
                     )
                 )
 
@@ -701,16 +703,16 @@ class UnscentedKalmanFilter(object):
             Rs = [self.R] * z_n
 
         if dts is None:
-            dts = [self._dt] * z_n
+            dts = [self.dt] * z_n
 
         # mean estimates from Kalman Filter
         if self.x.ndim == 1:
-            means = np.zeros((z_n, self._dim_x))
+            means = np.zeros((z_n, self.dim_x))
         else:
-            means = np.zeros((z_n, self._dim_x, 1))
+            means = np.zeros((z_n, self.dim_x, 1))
 
         # state covariances from Kalman Filter
-        covariances = np.zeros((z_n, self._dim_x, self._dim_x))
+        covariances = np.zeros((z_n, self.dim_x, self.dim_x))
 
         for i, (z, r, dt) in enumerate(zip(zs, Rs, dts)):
             self.predict(dt=dt, UT=UT)
@@ -785,7 +787,7 @@ class UnscentedKalmanFilter(object):
         n, dim_x = Xs.shape
 
         if dts is None:
-            dts = [self._dt] * n
+            dts = [self.dt] * n
         elif np.isscalar(dts):
             dts = [dts] * n
 
@@ -825,7 +827,7 @@ class UnscentedKalmanFilter(object):
 
             # update the smoothed estimates
             xs[k] += K @ self.residual_x(xs[k + 1], xb)
-            ps[k] += K @ ps[k + 1] - Pb) @ K.T
+            ps[k] += K @ ps[k + 1] - Pb @ K.T
             Ks[k] = K
 
         return (xs, ps, Ks)
@@ -865,9 +867,7 @@ class UnscentedKalmanFilter(object):
         mahalanobis : float
         """
         if self._mahalanobis is None:
-            self._mahalanobis = np.sqrt(
-                float(self.y.T @ self.SI @ self.y)
-            )
+            self._mahalanobis = np.sqrt(float(self.y.T @ self.SI @ self.y))
         return self._mahalanobis
 
     def __repr__(self):

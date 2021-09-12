@@ -19,8 +19,7 @@ for more information.
 import numpy as np
 
 
-def unscented_transform(sigmas, Wm, Wc, noise_cov=None,
-                        mean_fn=None, residual_fn=None):
+def unscented_transform(sigmas, Wm, Wc, noise_cov=None, mean_fn=None, residual_fn=None):
     r"""
     Computes unscented transform of a set of sigma points and weights.
     returns the mean and covariance in a tuple.
@@ -96,26 +95,25 @@ def unscented_transform(sigmas, Wm, Wc, noise_cov=None,
     https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python
     """
 
-    kmax, n = sigmas.shape
+    kmax, n, _ = sigmas.shape
 
     try:
         if mean_fn is None:
             # new mean is just the sum of the sigmas * weight
-            x = np.dot(Wm, sigmas)    # dot = \Sigma^n_1 (W[k]*Xi[k])
+            x = np.atleast_2d(sigmas.squeeze() @ Wm.T)  # dot = \Sigma^n_1 (W[k]*Xi[k])
         else:
             x = mean_fn(sigmas, Wm)
     except:
         print(sigmas)
         raise
 
-
     # new covariance is the sum of the outer product of the residuals
     # times the weights
 
     # this is the fast way to do this - see 'else' for the slow way
     if residual_fn is np.subtract or residual_fn is None:
-        y = sigmas - x[np.newaxis, :]
-        P = np.dot(y.T, np.dot(np.diag(Wc), y))
+        y = sigmas.squeeze().T - x
+        P = y.T @ np.atleast_2d(np.diag(Wc)) @ y
     else:
         P = np.zeros((n, n))
         for k in range(kmax):
@@ -125,4 +123,4 @@ def unscented_transform(sigmas, Wm, Wc, noise_cov=None,
     if noise_cov is not None:
         P += noise_cov
 
-    return (x, P)
+    return (x.T, P)

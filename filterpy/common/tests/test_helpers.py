@@ -73,10 +73,10 @@ def test_saver_UKF():
             [[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]], dtype=float
         )
 
-        return np.dot(F, x)
+        return F @ x
 
     def hx(x):
-        return np.array([x[0], x[2]])
+        return np.array([x[0], x[2]]).T
 
     dt = 0.1
     points = MerweScaledSigmaPoints(4, 0.1, 2.0, -1)
@@ -84,14 +84,14 @@ def test_saver_UKF():
 
     z_std = 0.1
     kf.R = np.diag([z_std ** 2, z_std ** 2])  # 1 standard
-    kf.x = np.array([-1.0, 1.0, -1.0, 1])
+    kf.x = np.array([[-1.0, 1.0, -1.0, 1]]).T
     kf.P *= 1.0
 
     zs = [[i, i] for i in range(40)]
     s = Saver(kf, skip_private=False, skip_callable=False, ignore=["z_mean"])
     for z in zs:
         kf.predict()
-        kf.update(z)
+        kf.update(np.array([z]).T)
         # print(kf.x, kf.log_likelihood, kf.P.diagonal())
         s.save()
     s.to_array()
