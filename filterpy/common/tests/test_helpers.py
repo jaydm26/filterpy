@@ -75,7 +75,7 @@ def test_saver_UKF():
         return F @ x
 
     def hx(x):
-        return np.array([x[0], x[2]]).T
+        return np.array([x[0], x[2]])
 
     dt = 0.1
     points = MerweScaledSigmaPoints(4, 0.1, 2.0, -1)
