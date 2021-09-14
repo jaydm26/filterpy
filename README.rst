@@ -93,11 +93,13 @@ If you use Anaconda, you can install from the conda-forge channel. You
 will need to add the conda-forge channel if you haven't already done so:
 
 ::
+
     conda config --add channels conda-forge
     
 and then install with:
 
 ::
+    
     conda install filterpy
     
     
