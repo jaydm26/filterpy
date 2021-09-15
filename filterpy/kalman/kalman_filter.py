@@ -1820,8 +1820,6 @@ def predict_steadystate(
     exp_shape = (dim_x, 1)
     assert check_input(x, exp_shape, "x")
     exp_shape = (dim_x, dim_x)
-    assert check_input(P, exp_shape, "P")
-    exp_shape = (dim_x, dim_x)
     assert check_input(F, exp_shape, "F")
     dim_u = u.shape[0]
     exp_shape = (dim_u, 1)
