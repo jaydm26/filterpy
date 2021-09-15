@@ -36,7 +36,7 @@ def test_rts():
     fk.R = np.eye(fk.dim_z) * 5  # state uncertainty
     fk.Q = np.eye(fk.dim_x) * 0.0001  # process uncertainty
 
-    zs = [t + random.randn() * 4 for t in range(40)]
+    zs = [np.array([[t + random.randn()]]) * 4 for t in range(40)]
 
     mu, cov, _, _ = fk.batch_filter(zs)
     mus = [x[0] for x in mu]
@@ -48,9 +48,7 @@ def test_rts():
         (p2,) = plt.plot(M[:, 0], c="b")
         (p3,) = plt.plot(mus, c="r")
         (p4,) = plt.plot([0, len(zs)], [0, len(zs)], "g")  # perfect result
-        plt.legend(
-            [p1, p2, p3, p4], ["measurement", "RKS", "KF output", "ideal"], loc=4
-        )
+        plt.legend([p1, p2, p3, p4], ["measurement", "RKS", "KF output", "ideal"], loc=4)
 
         plt.show()
 

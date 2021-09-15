@@ -15,6 +15,7 @@ for more information.
 """
 
 from __future__ import absolute_import, division, print_function
+from typing import Type
 
 
 import numpy.random as random
@@ -93,7 +94,7 @@ def const_vel_filter_2d(dt, x_ndim=1, P_diag=(1.0, 1, 1, 1), R_std=1.0, Q_var=0.
 def test_noisy_1d():
     f = KalmanFilter(dim_x=2, dim_z=1)
 
-    f.x = np.array([[2.0], [0.0]])  # initial state (location and velocity)
+    f.x = np.array([[2.0, 0.0]]).T  # initial state (location and velocity)
 
     f.F = np.array([[1.0, 1.0], [0.0, 1.0]])  # state transition matrix
 
@@ -108,8 +109,8 @@ def test_noisy_1d():
     zs = []
     for t in range(100):
         # create measurement = t plus white noise
-        z = t + random.randn() * 20
-        zs.append(np.array([[z]]))
+        z = np.array([[t + random.randn() * 20]])
+        zs.append(z)
 
         # perform kalman filtering
         f.update(z)
@@ -221,8 +222,8 @@ def test_noisy_11d():
     zs = []
     for t in range(100):
         # create measurement = t plus white noise
-        z = t + random.randn() * 20
-        zs.append(np.array([[z]]))
+        z = np.array([[t + random.randn() * 20]])
+        zs.append(z)
 
         # perform kalman filtering
         f.update(z)
@@ -288,7 +289,7 @@ def test_univariate():
 
     for i in range(50):
         f.predict()
-        f.update(i)
+        f.update(np.array([[i]]))
 
 
 def test_procedure_form():
@@ -315,7 +316,7 @@ def test_procedure_form():
     xest = []
     pos = 0.0
     for t in range(2000):
-        z = pos + random.randn() * std_z
+        z = np.array([[pos + random.randn() * std_z]])
         pos += 100
 
         # perform kalman filtering
@@ -350,11 +351,11 @@ def test_steadystate():
 
     for i in range(100):
         cv.predict()
-        cv.update([i])
+        cv.update(np.array([[i]]))
 
     for i in range(100):
         cv.predict_steadystate()
-        cv.update_steadystate([i])
+        cv.update_steadystate(np.array([[i]]))
         # test mahalanobis
         a = np.zeros(cv.y.shape)
         maha = scipy_mahalanobis(a, cv.y, cv.SI)
@@ -441,50 +442,59 @@ def class_form():
 def test_z_dim():
     f = const_vel_filter(1.0, x0=2, R_std=1.0, Q_var=5.1)
     f.test_matrix_dimensions()
-    f.update(3.0)
-    assert f.x.shape == (2, 1)
-
-    f.update([3])
-    assert f.x.shape == (2, 1)
-
-    f.update(np.array([[3]]))
+    f.update(np.array([[3.0]]))
     assert f.x.shape == (2, 1)
 
     try:
         f.update(np.array([[[3]]]))
-        assert (
-            False
-        ), "filter should have asserted that [[[3]]] is not a valid form for z"
+        assert False, "filter should have asserted that [[[3]]] is not a valid form for z"
     except:
+        pass
+
+    try:
+        f.update([3])
+        assert False, "filter should have raised [3] as a ValueError."
+    except TypeError:
+        pass
+
+    try:
+        f.update(np.array([3]))
+        assert False, "filter should have raised array([3]) as a ValueError."
+    except ValueError:
         pass
 
     f = const_vel_filter_2d(1.0, R_std=1.0, Q_var=5.1)
     try:
         f.update(3)
         assert False, "filter should have asserted that 3 is not a valid form for z"
-    except:
+    except TypeError:
         pass
 
     try:
         f.update([3])
         assert False, "filter should have asserted that [3] is not a valid form for z"
-    except:
+    except TypeError:
         pass
 
     try:
         f.update([3, 3])
         assert False, "filter should have asserted that [3] is not a valid form for z"
-    except:
+    except TypeError:
         pass
 
     try:
         f.update([[3, 3]])
         assert False, "filter should have asserted that [3] is not a valid form for z"
-    except:
+    except TypeError:
         pass
 
     f = const_vel_filter_2d(1.0, R_std=1.0, Q_var=5.1)
-    f.update([[3], [3]])
+    try:
+        f.update([[3], [3]])
+        assert False, "filter should have raised [[3], [3]] as a TypeError"
+    except TypeError:
+        pass
+
     f.update(np.array([[3], [3]]))
 
     # now make sure test_matrix_dimensions() is working
@@ -494,7 +504,7 @@ def test_z_dim():
         f.H = 3
         f.test_matrix_dimensions()
         assert False, "test_matrix_dimensions should have asserted on shape of H"
-    except:
+    except TypeError:
         pass
 
     f = const_vel_filter_2d(1.0, R_std=1.0, Q_var=5.1)
@@ -502,21 +512,21 @@ def test_z_dim():
         f.R = 3
         f.test_matrix_dimensions()
         assert False, "test_matrix_dimensions should have asserted on shape of R"
-    except:
+    except TypeError:
         pass
 
     try:
         f.R = [3]
         f.test_matrix_dimensions()
         assert False, "test_matrix_dimensions should have asserted on shape of R"
-    except:
+    except TypeError:
         pass
 
     try:
         f.R = [3, 4.0]
         f.test_matrix_dimensions()
         assert False, "test_matrix_dimensions should have asserted on shape of R"
-    except:
+    except TypeError:
         pass
 
     f.R = np.diag([3, 4.0])
@@ -524,21 +534,19 @@ def test_z_dim():
 
     f = const_vel_filter(1.0, x0=2, R_std=1.0, Q_var=5.1)
 
-    # test case where x is 1d array
-    f.update([[3]])
-    f.test_matrix_dimensions(z=3.0)
-    f.test_matrix_dimensions(z=[3.0])
-
     # test case whre x is 2d array
     f.x = np.array([[0.0, 0.0]]).T
-    f.update([[3]])
-    f.test_matrix_dimensions(z=3.0)
-    f.test_matrix_dimensions(z=[3.0])
+    f.update(np.array([[3]]))
+    try:
+        f.test_matrix_dimensions(z=3.0)
+    except TypeError:
+        pass
+    f.test_matrix_dimensions(z=np.array([[3.0]]))
 
     try:
         f.test_matrix_dimensions(z=[[3.0]])
         assert False, "test_matrix_dimensions should have asserted on shape of z"
-    except:
+    except TypeError:
         pass
 
     f = const_vel_filter_2d(1.0, R_std=1.0, Q_var=5.1)
@@ -548,21 +556,21 @@ def test_z_dim():
         try:
             f.test_matrix_dimensions(z=3.0)
             assert False, "test_matrix_dimensions should have asserted on shape of z"
-        except:
+        except TypeError:
             pass
 
         try:
             f.test_matrix_dimensions(z=[3.0])
             assert False, "test_matrix_dimensions should have asserted on shape of z"
-        except:
+        except TypeError:
             pass
 
         try:
             f.test_matrix_dimensions(z=[3.0, 3.0])
             assert False, "test_matrix_dimensions should have asserted on shape of z"
-        except:
+        except TypeError:
             pass
-        f.test_matrix_dimensions(z=[[3.0], [3.0]])
+        f.test_matrix_dimensions(z=np.array([[3.0], [3.0]]))
         f.x = np.array([[1, 2, 3, 4.0]]).T
 
 
@@ -574,15 +582,13 @@ def test_default_dims():
 
 def test_functions():
 
-    x, P = predict(
-        x=np.array([10.0]), P=np.array([3.0]), u=np.array([1.0]), Q=np.array([2.0 ** 2])
-    )
-    x, P = update(x=x, P=P, z=np.array([12.0]), R=np.array([3.5 ** 2]))
+    x, P = predict(x=np.array([[10.0]]), P=np.array([[3.0]]), u=np.array([[1.0]]), Q=np.array([[2.0 ** 2]]))
+    x, P = update(x=x, P=P, z=np.array([[12.0]]), R=np.array([[3.5 ** 2]]))
 
-    x, P = predict(x=np.array([10.0]), P=np.array([[3.0]]), Q=2.0 ** 2)
-    x, P = update(x=x, P=P, z=12.0, H=np.array([[1.0]]), R=np.array([[3.5 ** 2]]))
+    x, P = predict(x=np.array([[10.0]]), P=np.array([[3.0]]), Q=np.array([[2.0 ** 2]]))
+    x, P = update(x=x, P=P, z=np.array([[12.0]]), H=np.array([[1.0]]), R=np.array([[3.5 ** 2]]))
 
-    x = np.array([1.0, 0])
+    x = np.array([[1.0, 0]]).T
     P = np.diag([1.0, 1])
     Q = np.diag([0.0, 0])
     H = np.array([[1.0, 0]])
@@ -592,7 +598,7 @@ def test_functions():
     assert x.shape == (2, 1)
     assert P.shape == (2, 2)
 
-    x, P = update(x, P, z=[1], R=np.array([[1.0]]), H=H)
+    x, P = update(x, P, z=np.array([[1]]), R=np.array([[1.0]]), H=H)
 
     assert x[0] == 1 and x[1] == 0
 
@@ -612,23 +618,39 @@ def test_functions():
 
 def test_z_checks():
     kf = KalmanFilter(dim_x=3, dim_z=1)
-    kf.update(3.0)
-    kf.update([3])
-    kf.update((3))
-    kf.update([[3]])
+    try:
+        kf.update(3.0)
+        assert False, "filter should have raised 3.0 as a TypeError."
+    except TypeError:
+        pass
+    try:
+        kf.update([3])
+        assert False, "filter should have raised [3.0] as a TypeError."
+    except TypeError:
+        pass
+    try:
+        kf.update((3))
+        assert False, "filter should have raised (3.0) as a TypeError."
+    except TypeError:
+        pass
+    try:
+        kf.update([[3]])
+        assert False, "filter should have raised [[3]] as a TypeError."
+    except TypeError:
+        pass
     kf.update(np.array([[3]]))
 
     try:
-        kf.update([[3, 3]])
+        kf.update(np.array([[3, 3]]))
         assert False, "accepted bad z shape"
     except ValueError:
         pass
 
     kf = KalmanFilter(dim_x=3, dim_z=2)
-    kf.update([3, 4])
-    kf.update([[3, 4]])
-
-    kf.update(np.array([[3, 4]]))
+    try:
+        kf.update(np.array([3, 4]))
+    except ValueError:
+        pass
     kf.update(np.array([[3, 4]]).T)
 
 
@@ -638,7 +660,7 @@ def test_update_correlated():
 
     for i in range(10):
         f.predict()
-        f.update_correlated(3.0)
+        f.update_correlated(np.array([[3.0]]))
 
 
 if __name__ == "__main__":

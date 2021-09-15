@@ -21,6 +21,7 @@ from __future__ import print_function
 from collections import defaultdict
 import copy
 import inspect
+from typing import Tuple
 import numpy as np
 
 
@@ -93,9 +94,7 @@ class Saver(object):
 
     """
 
-    def __init__(
-        self, kf, save_current=False, skip_private=False, skip_callable=False, ignore=()
-    ):
+    def __init__(self, kf, save_current=False, skip_private=False, skip_callable=False, ignore=()):
         """Construct the save object, optionally saving the current
         state of the filter"""
         # pylint: disable=too-many-arguments
@@ -110,9 +109,7 @@ class Saver(object):
         # need to save all properties since it is possible that the property
         # is computed only on access. I use this trick a lot to minimize
         # computing unused information.
-        self.properties = inspect.getmembers(
-            type(kf), lambda o: isinstance(o, property)
-        )
+        self.properties = inspect.getmembers(type(kf), lambda o: isinstance(o, property))
 
         if save_current:
             self.save()
@@ -205,9 +202,7 @@ class Saver(object):
                 pass
 
     def __repr__(self):
-        return "<Saver object at {}\n  Keys: {}>".format(
-            hex(id(self)), " ".join(self.keys)
-        )
+        return "<Saver object at {}\n  Keys: {}>".format(hex(id(self)), " ".join(self.keys))
 
 
 def runge_kutta4(y, x, dx, f):
@@ -308,9 +303,7 @@ def reshape_z(z, dim_z, ndim):
         z = z.T
 
     if z.shape != (dim_z, 1):
-        raise ValueError(
-            "z (shape {}) must be convertible to shape ({}, 1)".format(z.shape, dim_z)
-        )
+        raise ValueError("z (shape {}) must be convertible to shape ({}, 1)".format(z.shape, dim_z))
 
     if ndim == 1:
         z = z[:, 0]
@@ -414,3 +407,26 @@ def outer_product_sum(A, B=None):
 
     outer = np.einsum("ij,ik->ijk", A, B)
     return np.sum(outer, axis=0)
+
+
+def check_input(ip: np.ndarray, exp_shape: tuple[int, int], which_ip: str):
+    """
+    Function to check the input provided is as expected. Raises a ValueError/TypeError if input is incorrect.
+    """
+    if isinstance(ip, np.ndarray):
+        if ip.ndim == 2:
+            if ip.shape == exp_shape:
+                return True
+            else:
+                raise ValueError(f"Provided input {which_ip} must be of shape {exp_shape}. Received {ip.shape}.")
+        else:
+            raise ValueError(
+                f"Provided input {which_ip} is not 2-dimensional. Please provide a numpy array of shape {exp_shape}."
+            )
+    else:
+        if which_ip == "z":
+            if ip is None:
+                return True
+        raise TypeError(
+            f"Provided input {which_ip} is not a numpy array. Please provide a numpy array of shape {exp_shape}."
+        )

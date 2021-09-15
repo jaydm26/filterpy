@@ -95,7 +95,7 @@ def one_run_test_fls():
     N = 4  # size of lag
 
     nom = np.array([t / 2.0 for t in range(0, 40)])
-    zs = np.array([t + random.randn() * 1.1 for t in nom])
+    zs = [np.array([[t + random.randn() * 1.1]]) for t in nom]
 
     xs, x = fls.smooth_batch(zs, N)
 

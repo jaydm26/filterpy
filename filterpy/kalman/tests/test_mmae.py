@@ -137,7 +137,7 @@ def generate_data(steady_count, noise_factor):
 def test_MMAE2():
     dt = 0.1
     pos, zs = generate_data(120, noise_factor=0.6)
-    z_xs = zs[:, 0]
+    z_xs = [np.array([[z]]) for z in zs[:, 0]]
 
     dt = 0.1
     ca = make_ca_filter(dt, noise_factor=0.6)
