@@ -413,7 +413,7 @@ class KalmanFilter(object):
         # save them so that in case you want to inspect them for various
         # purposes
         self.K = np.zeros((dim_x, dim_z))  # kalman gain
-        self.y = np.zeros((dim_z, 1))
+        self.__y = np.zeros((dim_z, 1))
         self.S = np.zeros((dim_z, dim_z))  # system uncertainty
         self.SI = np.zeros((dim_z, dim_z))  # inverse system uncertainty
 
@@ -527,6 +527,16 @@ class KalmanFilter(object):
         exp_shape = (self.dim_z, 1)
         if check_input(vec, exp_shape, "z"):
             self.__z = vec
+
+    @property
+    def y(self):  # pylint: disable=missing-function-docstring
+        return self.__y
+
+    @y.setter
+    def y(self, vec: np.ndarray):
+        exp_shape = (self.dim_z, 1)
+        if check_input(vec, exp_shape, "y"):
+            self.__y = vec
 
     def predict(
         self,
@@ -1011,6 +1021,9 @@ class KalmanFilter(object):
             exp_shape = (self.dim_z, 1)
             assert all([check_input(z, exp_shape, "z") for z in zs])
             assert len(zs) == n, f"Length of zs is not the same as zs. Expected {n}, got {len(zs)}."
+        else:
+            raise TypeError("zs must be an iterable.")
+
         if Fs is None:
             Fs = [self.F] * n
         else:
@@ -1937,6 +1950,8 @@ def batch_filter(
         exp_shape = (dim_z, 1)
         assert all([check_input(z, exp_shape, "z") for z in zs])
         assert len(zs) == n, f"Length of zs is not the same as zs. Expected {n}, got {len(zs)}."
+    else:
+        raise TypeError("zs must be an iterable.")
 
     if isinstance(Fs, Iterable):
         exp_shape = (dim_x, dim_x)

@@ -75,7 +75,7 @@ def test_batch_equals_recursive():
 def one_run_test_fls():
     fls = FixedLagSmoother(dim_x=2, dim_z=1)
 
-    fls.x = np.array([0.0, 0.5])
+    fls.x = np.array([[0.0, 0.5]]).T
     fls.F = np.array([[1.0, 1.0], [0.0, 1.0]])
 
     fls.H = np.array([[1.0, 0.0]])

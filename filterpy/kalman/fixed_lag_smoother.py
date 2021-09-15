@@ -17,11 +17,11 @@ for more information.
 
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import numpy as np
 from scipy.linalg import inv
-from filterpy.common import pretty_str
+from filterpy.common import pretty_str, check_input
 
 
 class FixedLagSmoother(object):
@@ -82,7 +82,7 @@ class FixedLagSmoother(object):
 
     """
 
-    def __init__(self, dim_x: int, dim_z: int, N: Optional[int] = None):
+    def __init__(self, dim_x: int, dim_z: int, dim_u: int = 1, N: Optional[int] = None):
         """Create a fixed lag Kalman filter smoother. You are responsible for
         setting the various state variables to reasonable values; the defaults
         below will not give you a functional filter.
@@ -108,18 +108,19 @@ class FixedLagSmoother(object):
 
         self.dim_x = dim_x
         self.dim_z = dim_z
+        self.dim_u = dim_u
         self.N = N
 
-        self.x = np.zeros((dim_x, 1))  # state
-        self.x_s = np.zeros((dim_x, 1))  # smoothed state
-        self.P = np.eye(dim_x)  # uncertainty covariance
-        self.Q = np.eye(dim_x)  # process uncertainty
-        self.F = np.eye(dim_x)  # state transition matrix
-        self.H = np.eye(dim_z, dim_x)  # Measurement function
-        self.R = np.eye(dim_z)  # state uncertainty
+        self.__x = np.zeros((dim_x, 1))  # state
+        self.__x_s = np.zeros((dim_x, 1))  # smoothed state
+        self.__P = np.eye(dim_x)  # uncertainty covariance
+        self.__Q = np.eye(dim_x)  # process uncertainty
+        self.__F = np.eye(dim_x)  # state transition matrix
+        self.__H = np.eye(dim_z, dim_x)  # Measurement function
+        self.__R = np.eye(dim_z)  # state uncertainty
         self.K = np.zeros((dim_x, 1))  # kalman gain
-        self.y = np.zeros((dim_z, 1))
-        self.B = np.zeros((dim_x, 1))
+        self.__y = np.zeros((dim_z, 1))
+        self.__B = np.zeros((dim_x, 1))
         self.S = np.zeros((dim_z, dim_z))
 
         # identity matrix. Do not alter this.
@@ -129,6 +130,119 @@ class FixedLagSmoother(object):
 
         if N is not None:
             self.xSmooth = []
+
+    @property
+    def x(self):  # pylint: disable=missing-function-docstring
+        return self.__x
+
+    @x.setter
+    def x(self, vec: np.ndarray):
+        exp_shape = (self.dim_x, 1)
+        if check_input(vec, exp_shape, "x"):
+            self.__x = vec
+
+    @property
+    def x_s(self):  # pylint: disable=missing-function-docstring
+        return self.__x_s
+
+    @x_s.setter
+    def x_s(self, vec: np.ndarray):
+        exp_shape = (self.dim_x, 1)
+        if check_input(vec, exp_shape, "x_s"):
+            self.__x_s = vec
+
+    @property
+    def P(self):  # pylint: disable=missing-function-docstring
+        return self.__P
+
+    @P.setter
+    def P(self, mat: np.ndarray):
+        exp_shape = (self.dim_x, self.dim_x)
+        if check_input(mat, exp_shape, "P"):
+            self.__P = mat
+
+    @property
+    def Q(self):  # pylint: disable=missing-function-docstring
+        return self.__Q
+
+    @Q.setter
+    def Q(self, mat: np.ndarray):
+        exp_shape = (self.dim_x, self.dim_x)
+        if check_input(mat, exp_shape, "Q"):
+            self.__Q = mat
+
+    @property
+    def B(self):  # pylint: disable=missing-function-docstring
+        return self.__B
+
+    @B.setter
+    def B(self, mat: np.ndarray):
+        if mat is not None:
+            exp_shape = (self.dim_x, self.dim_u)
+            if check_input(mat, exp_shape, "B"):
+                self.__B = mat
+        else:
+            self.__B = mat
+
+    @property
+    def F(self):  # pylint: disable=missing-function-docstring
+        return self.__F
+
+    @F.setter
+    def F(self, mat: np.ndarray):
+        exp_shape = (self.dim_x, self.dim_x)
+        if check_input(mat, exp_shape, "F"):
+            self.__F = mat
+
+    @property
+    def H(self):  # pylint: disable=missing-function-docstring
+        return self.__H
+
+    @H.setter
+    def H(self, mat: np.ndarray):
+        exp_shape = (self.dim_z, self.dim_x)
+        if check_input(mat, exp_shape, "H"):
+            self.__H = mat
+
+    @property
+    def R(self):  # pylint: disable=missing-function-docstring
+        return self.__R
+
+    @R.setter
+    def R(self, mat: np.ndarray):
+        exp_shape = (self.dim_z, self.dim_z)
+        if check_input(mat, exp_shape, "R"):
+            self.__R = mat
+
+    @property
+    def M(self):  # pylint: disable=missing-function-docstring
+        return self.__M
+
+    @M.setter
+    def M(self, mat: np.ndarray):
+        exp_shape = (self.dim_x, self.dim_z)
+        if check_input(mat, exp_shape, "M"):
+            self.__M = mat
+
+    @property
+    def z(self):  # pylint: disable=missing-function-docstring
+        return self.__z
+
+    @z.setter
+    def z(self, vec: np.ndarray):
+        exp_shape = (self.dim_z, 1)
+        if check_input(vec, exp_shape, "z"):
+            self.__z = vec
+
+    @property
+    def y(self):  # pylint: disable=missing-function-docstring
+        return self.__y
+
+    @y.setter
+    def y(self, vec: np.ndarray):
+        exp_shape = (self.dim_z, 1)
+        if check_input(vec, exp_shape, "y"):
+            self.__y = vec
 
     def smooth(self, z: np.ndarray, u: Optional[np.ndarray] = None):
         """Smooths the measurement using a fixed lag smoother.
@@ -157,6 +271,13 @@ class FixedLagSmoother(object):
         u : ndarray, optional
             If provided, control input to the filter
         """
+
+        if u is not None:
+            exp_shape = (self.dim_u, 1)
+            assert check_input(u, exp_shape, "u")
+
+        exp_shape = (self.dim_z, 1)
+        assert check_input(z, exp_shape, "z")
 
         # take advantage of the fact that np.array are assigned by reference.
         H = self.H
@@ -249,6 +370,23 @@ class FixedLagSmoother(object):
             xhat_smooth is the output of the N step fix lag smoother
             xhat is the filter output of the standard Kalman filter
         """
+
+        n = len(zs)
+        if isinstance(zs, Iterable):
+            exp_shape = (self.dim_z, 1)
+            assert all([check_input(z, exp_shape, "z") for z in zs])
+            assert len(zs) == n, f"Length of zs is not the same as zs. Expected {n}, got {len(zs)}."
+        else:
+            raise TypeError("zs must be an iterable.")
+
+        if not isinstance(N, int):
+            raise TypeError("N must be an integer.")
+
+        if us is not None:
+            if isinstance(us, Iterable):
+                exp_shape = (self.dim_u, 1)
+                assert all([check_input(u, exp_shape, "u") for u in us])
+                assert len(us) == n, f"Length of us must be the same as zs. Expected {n}, got {len(us)}."
 
         # take advantage of the fact that np.array are assigned by reference.
         H = self.H
